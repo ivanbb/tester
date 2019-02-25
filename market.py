@@ -10,16 +10,56 @@ class Market(object):
         self.__order_book = [] #{'ticket', 'symbol', 'volume', 'type', 'price'}
         self.__symbols = symbols
         self.prices = candles
+        self.__is_open = True
 
     def __merge_positions(self, symbol):
         keys = self.account.check_positions(symbol)  # get tickets of all positions by this symbol
         if keys is None:
             return
         try:
-            amount = self.account.account_info('ACCOUNT_ASSETS')[symbol]  # getting amount of currency
-        except KeyError:
+            if len(keys) == 1:  # if there is just one position
+                return  # it is nothing to merge
+            new_amount = self.account.account_info('ACCOUNT_ASSETS')[symbol]  # getting amount of currency
+            new_price = 0  # price of merged position is avg of positions prices
+            ticket = keys[0]  # positions ticket equal to ticket of last position
+            position_type = 'BUY'
+            if new_amount < 0:
+                position_type = 'SELL'
             for key in keys:
-                self.account.positions.pop(key)  # if assets eq. 0, pop all positions
+                position = self.account.positions[key]
+                new_price += position['price']
+                self.account.positions.pop(key)  # removing old position
+
+            new_amount = (new_amount**2)**(1/2)
+            new_price = new_price/len(keys)
+            self.account.positions[ticket] = {'symbol': symbol, 'volume': new_amount,
+                                              'type': position_type, 'price': new_price,
+                                              'time': self.datetime}  # and adding a new position
+
+        except KeyError:  # if asset's amount eq. 0, release margin...
+            for key in keys:
+                position = self.account.positions[key]
+                """
+                Calculating margin used in the position for release it.
+                Basically it's the same operations as in position's opening.
+                """
+                if self.__symbols[position['symbol']].symbol_info("SYMBOL_MARGIN") == 0:
+                    order_amount = position['volume']*position['price']
+
+                    if self.account.account_info('ACCOUNT_LEVERAGE') == 1:
+                        if position['type'] == 'SELL':  # for sell positions by non-margin assets without leverage
+                            self.account.set_margin(order_amount*-1)
+                        else:
+                            self.account.set_balance(order_amount)
+                    else:
+                        self.account.set_margin(float(order_amount)/self.account.account_info('ACCOUNT_LEVERAGE')*-1)
+
+                else:
+                    symbol_margin = self.__symbols[position['symbol']].symbol_info("SYMBOL_MARGIN")
+                    order_amount = position['volume'] * symbol_margin  # margin for order
+                    self.account.set_margin(float(order_amount) / self.account.account_info('ACCOUNT_LEVERAGE')*-1)
+
+                self.account.positions.pop(key)  # ...and pop all positions
 
     def __open_buy(self, order):
         """Executing buy orders"""
@@ -43,7 +83,7 @@ class Market(object):
         self.__order_book.remove(order)  # then removing executed order from order book
 
     def __open_sell(self, order):
-        """Executing buy orders"""
+        """Executing sell orders"""
         self.account.orders.remove(order['ticket']) # removing order from account
         if self.__symbols[order['symbol']].symbol_info("SYMBOL_MARGIN") == 0:  # for non-margin assets
             order_amount = order['volume']*order['price']
@@ -89,18 +129,24 @@ class Market(object):
                 self.__open_sell(order)
 
     def order_place(self, symbol, vol, order_type, price):
+        if not self.__is_open:
+            return 10018, -1
         from random import randint
         ticket = randint(1000, 9999)
         self.__order_book.append({'ticket': ticket, 'symbol': symbol, 'volume': vol, 'type': order_type, 'price': price})
         self.account.orders.append(ticket)
-        return ticket
-        pass
+        return 10009, ticket
 
     def set_price(self):
         date = datetime.fromtimestamp(self.datetime).strftime(DATE_FORMAT)  # get date from timestamp
         time = datetime.fromtimestamp(self.datetime-60).strftime(TIME_FORMAT)  # get time from timestamp
         for key in self.__symbols.keys():  # for each symbol
-            self.__symbols[key]._set_ask_bid(self.prices[key].i_close('M1', date, time))  # setting prices from close of prev minute
+            price = self.prices[key].i_close('M1', date, time)
+            if type(price) is bool:
+                self.__is_open = False
+            else:
+                self.__symbols[key]._set_ask_bid(price)  # setting prices from close of prev minute
+                self.__is_open = True
 
 
 class SymbolPrices(object):
@@ -130,9 +176,13 @@ class SymbolPrices(object):
             _timestamp += 60*self.__rates[tf]
             date = datetime.fromtimestamp(_timestamp).strftime(DATE_FORMAT)  # get date from timestamp
             time = datetime.fromtimestamp(_timestamp).strftime(TIME_FORMAT)  # get time from timestamp
+            print("{0} {1}".format(date, time))
             return self.data.loc[(self.data['<DATE>'] == int(date)) & (self.data['<TIME>'] == int(time)), ['<CLOSE>']]['<CLOSE>'].tolist()[0]
-        except AttributeError:
+        except (AttributeError, IndexError):
             print('AttributeError: you didnt initialized this time frame or data is empty!')
+            return False
+        # except IndexError:
+        #     return False
 
     def i_high(self, tf, date, time):
         try:
@@ -195,10 +245,3 @@ class SymbolPrices(object):
             return vol
         except AttributeError:
             print('AttributeError: you didnt initialized this time frame or data is empty!')
-
-
-# sym = SymbolPrices('EURUSD', ['M15'])
-#
-#
-# open1 = sym.i_open('M15', '1971.01.13', '00:00')
-# pass

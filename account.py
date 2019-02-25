@@ -51,3 +51,27 @@ class Account:
                 keys.append(key)
         return keys
 
+    def calc(self):
+        """Function for calculating free margin, profit and equity"""
+        from objects import symbols
+
+        for position in self.positions:
+            position = self.positions[position]
+            if position['type'] == 'BUY':
+                bid = symbols[position['symbol']].symbol_info("PRICE_BID")
+                tick = symbols[position['symbol']].symbol_info("SYMBOL_POINT")
+                contract = symbols[position['symbol']].symbol_info("SYMBOL_TRADE_CONTRACT_SIZE")
+                pos_profit = (bid - position['price'])*position['volume']*tick*contract  # calculating position's profit
+                self.set_equity(pos_profit)  # and changing equity
+
+            elif position['type'] == 'SELL':
+                ask = symbols[position['symbol']].symbol_info("PRICE_ASK")
+                tick = symbols[position['symbol']].symbol_info("SYMBOL_POINT")
+                contract = symbols[position['symbol']].symbol_info("SYMBOL_TRADE_CONTRACT_SIZE")
+                pos_profit = (position['price']-ask)*position['volume']*tick*contract
+                self.set_equity(pos_profit)
+
+        self.__profit = self.__equity-self.__balance
+
+        print('equity={0}, profit={1}'.format(self.__equity, self.__profit))
+

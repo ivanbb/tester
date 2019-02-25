@@ -11,6 +11,6 @@ currency = 'USD'
 symbols_list = [['SBER', 'RUR', 4, 0.01, 1, 0.01, 8, 0]]  # name, base, digits, point, contract_size, tick_size, spread, margin
 symbols = {}  # symbols parameters, include ASK and BID prices
 candles = {}  # prices of candles (exclude ASK and BID)
-leverage = 100
+leverage = 1
 market = 0
 datetime = start  # time of 0 candle during testing

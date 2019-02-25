@@ -11,7 +11,7 @@ def symbol_info(name, prop):
 
 
 def iOpen(symb, time_frame, shift):
-    """Difine iOpen function from Metatrader"""
+    """Define iOpen function from Metatrader"""
     if time_frame == 'NULL':
         time_frame = objects.time_frame
     rates = {'M1': 1, 'M5': 5, 'M15': 15, 'M30': 30, 'H1': 60, 'H4': 240, 'D1': 1440, 'W1': 10080,

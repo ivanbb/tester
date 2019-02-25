@@ -14,6 +14,7 @@ def run():
         objects.datetime = __time
         objects.market.set_price()
         bot.on_tick()
+        objects.market.account.calc()
         objects.market.open_position()
 
 
@@ -25,6 +26,7 @@ if __name__ == '__main__':
         objects.candles[sym[0]] = SymbolPrices(sym[0])  # создаем символы
     objects.market = Market(objects.start, account, objects.symbols, objects.candles)
     objects.market.set_price()
+    bot.init()
     run()
 
 
