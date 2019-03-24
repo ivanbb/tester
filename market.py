@@ -1,13 +1,13 @@
 from time import strptime, mktime
 from datetime import datetime
 from objects import DATE_FORMAT, TIME_FORMAT
-
+from dbconnect import insert_trade
 
 class Market(object):
     def __init__(self, timestamp, acc, symbols, candles):
         self.datetime = timestamp
         self.account = acc
-        self.__order_book = [] #{'ticket', 'symbol', 'volume', 'type', 'price'}
+        self.__order_book = []  # {'ticket', 'symbol', 'volume', 'type', 'price'}
         self.__symbols = symbols
         self.prices = candles
         self.__is_open = True
@@ -43,6 +43,7 @@ class Market(object):
                 Calculating margin used in the position for release it.
                 Basically it's the same operations as in position's opening.
                 """
+
                 if self.__symbols[position['symbol']].symbol_info("SYMBOL_MARGIN") == 0:
                     order_amount = position['volume']*position['price']
 
@@ -59,6 +60,10 @@ class Market(object):
                     order_amount = position['volume'] * symbol_margin  # margin for order
                     self.account.set_margin(float(order_amount) / self.account.account_info('ACCOUNT_LEVERAGE')*-1)
 
+                self.account.set_balance(self.account.account_info('ACCOUNT_EQUITY') -
+                                         self.account.account_info('ACCOUNT_BALANCE'))  # set balance after closing deal
+
+                insert_trade(position, key)  # inserting positions's info in db for history
                 self.account.positions.pop(key)  # ...and pop all positions
 
     def __open_buy(self, order):
@@ -130,7 +135,7 @@ class Market(object):
 
     def order_place(self, symbol, vol, order_type, price):
         if not self.__is_open:
-            return 10018, -1
+            return 10018, 0
         from random import randint
         ticket = randint(1000, 9999)
         self.__order_book.append({'ticket': ticket, 'symbol': symbol, 'volume': vol, 'type': order_type, 'price': price})
@@ -142,7 +147,7 @@ class Market(object):
         time = datetime.fromtimestamp(self.datetime-60).strftime(TIME_FORMAT)  # get time from timestamp
         for key in self.__symbols.keys():  # for each symbol
             price = self.prices[key].i_close('M1', date, time)
-            if type(price) is bool:
+            if price == 0:
                 self.__is_open = False
             else:
                 self.__symbols[key]._set_ask_bid(price)  # setting prices from close of prev minute
@@ -164,10 +169,9 @@ class SymbolPrices(object):
     def i_open(self, tf, date, time):
             try:
                 return self.data.loc[(self.data['<DATE>'] == int(date)) & (self.data['<TIME>'] == int(time)), ['<OPEN>']]['<OPEN>'].tolist()[0]
-            except AttributeError:
+            except (AttributeError, IndexError):
                 print('AttributeError: you didnt initialized this time frame or data is empty!')
-            except IndexError:
-                print('AttributeError: you didnt initialized this time frame or data is empty!')
+            return 0
 
     def i_close(self, tf, date, time):
         try:
@@ -180,7 +184,7 @@ class SymbolPrices(object):
             return self.data.loc[(self.data['<DATE>'] == int(date)) & (self.data['<TIME>'] == int(time)), ['<CLOSE>']]['<CLOSE>'].tolist()[0]
         except (AttributeError, IndexError):
             print('AttributeError: you didnt initialized this time frame or data is empty!')
-            return False
+            return 0
         # except IndexError:
         #     return False
 
@@ -202,10 +206,9 @@ class SymbolPrices(object):
                 if price < high:
                     high = price
             return high
-        except AttributeError:
+        except (AttributeError, IndexError):
             print('AttributeError: you didnt initialized this time frame or data is empty!')
-        except ValueError:
-            pass
+            return 0
 
     def i_low(self, tf, date, time):
         try:
@@ -225,10 +228,9 @@ class SymbolPrices(object):
                 if price < low:
                     low = price
             return low
-        except AttributeError:
+        except (AttributeError, IndexError):
             print('AttributeError: you didnt initialized this time frame or data is empty!')
-        except ValueError:
-            pass
+            return 0
 
     def i_volume(self, tf, date, time):
         try:
@@ -243,5 +245,6 @@ class SymbolPrices(object):
                     continue
                 vol += _vol['<VOL>'].tolist()[0]
             return vol
-        except AttributeError:
+        except (AttributeError, IndexError):
             print('AttributeError: you didnt initialized this time frame or data is empty!')
+            return 0

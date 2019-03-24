@@ -8,8 +8,9 @@ class Account:
         self.__margin = 0
         self.__currency = currency
         self.__leverage = leverage
-        self.__assets = {currency: balance}  # активы
+        self.__assets = {currency: balance}  # assets
         self.__profit = 0
+        self.positions_profits = {}
         self.positions = {}
         self.orders = []
 
@@ -55,13 +56,15 @@ class Account:
         """Function for calculating free margin, profit and equity"""
         from objects import symbols
 
-        for position in self.positions:
+        for position, key in zip(self.positions, self.positions.keys()):
+            self.positions_profits = {}
             position = self.positions[position]
             if position['type'] == 'BUY':
                 bid = symbols[position['symbol']].symbol_info("PRICE_BID")
                 tick = symbols[position['symbol']].symbol_info("SYMBOL_POINT")
                 contract = symbols[position['symbol']].symbol_info("SYMBOL_TRADE_CONTRACT_SIZE")
                 pos_profit = (bid - position['price'])*position['volume']*tick*contract  # calculating position's profit
+                self.positions_profits[key] = pos_profit  # don't work yet
                 self.set_equity(pos_profit)  # and changing equity
 
             elif position['type'] == 'SELL':
@@ -69,6 +72,7 @@ class Account:
                 tick = symbols[position['symbol']].symbol_info("SYMBOL_POINT")
                 contract = symbols[position['symbol']].symbol_info("SYMBOL_TRADE_CONTRACT_SIZE")
                 pos_profit = (position['price']-ask)*position['volume']*tick*contract
+                self.positions_profits[key] = pos_profit  # don't work yet
                 self.set_equity(pos_profit)
 
         self.__profit = self.__equity-self.__balance
