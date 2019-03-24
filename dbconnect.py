@@ -67,17 +67,15 @@ def insert_balance(time, balance, equity):
         conn.close()
 
 
-def query_with_fetchall():
+def query_with_fetchall(name):
     try:
         db_config = read_db_config()
         conn = MySQLConnection(**db_config)
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM symbols")
+        cursor.execute("SELECT * FROM symbols WHERE name = %(name)s", {'name': name})
         rows = cursor.fetchall()
 
-        print('Total Row(s):', cursor.rowcount)
-        for row in rows:
-            print(row)
+        return rows
 
     except Error as e:
         print(e)
@@ -85,3 +83,5 @@ def query_with_fetchall():
     finally:
         cursor.close()
         conn.close()
+
+# query_with_fetchall("SBER")

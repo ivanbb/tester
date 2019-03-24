@@ -180,7 +180,7 @@ class SymbolPrices(object):
             _timestamp += 60*self.__rates[tf]
             date = datetime.fromtimestamp(_timestamp).strftime(DATE_FORMAT)  # get date from timestamp
             time = datetime.fromtimestamp(_timestamp).strftime(TIME_FORMAT)  # get time from timestamp
-            print("{0} {1}".format(date, time))
+            # print("{0} {1}".format(date, time))
             return self.data.loc[(self.data['<DATE>'] == int(date)) & (self.data['<TIME>'] == int(time)), ['<CLOSE>']]['<CLOSE>'].tolist()[0]
         except (AttributeError, IndexError):
             print('AttributeError: you didnt initialized this time frame or data is empty!')

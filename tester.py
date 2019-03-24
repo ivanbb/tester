@@ -6,8 +6,30 @@ from market import Market, SymbolPrices
 import bot as bot
 import objects
 import matplotlib.pyplot as plt
-from dbconnect import insert_balance
+from dbconnect import insert_balance, query_with_fetchall
 import sys
+
+
+def init(args):
+    objects.start = int(args[1])
+    objects.end = int(args[2])
+    objects.time_frame = args[3]
+    objects.balance = int(args[4])
+    objects.leverage = int(args[5])
+    symbols = query_with_fetchall(args[6])
+
+    for symb in symbols:
+        objects.symbols_list.append(list(symb))
+
+    print("Start time: {0}, End time: {1}, time_frame: {2}, balance: {3}, leverage: {4}, symbol: {5}"
+          " \n testing started".format(
+                                objects.start,
+                                objects.end,
+                                objects.time_frame,
+                                objects.balance,
+                                objects.leverage,
+                                objects.symbols_list[0][0])
+          )
 
 
 def run():
@@ -34,8 +56,7 @@ def run():
 if __name__ == '__main__':
     """Tester starting from command line with parameters start datetime, 
     end datetime, time frame, initial balance, leverage, symbol"""
-    for param in sys.argv:
-        print(param)
+    # init(sys.argv)  # initialise tester
 
     account = Account(objects.balance, objects.currency, objects.leverage)  # создаем аккаунт
     for sym in objects.symbols_list:
