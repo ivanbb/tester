@@ -1,0 +1,2 @@
+Сервис для тестирования автоматических торговых систем на финансовых рынках. Эмулирует изменение рыночных цен, используя csv файлы с историей и торговые операции. В качестве интерфейса в будущих версиях будет использоваться веб-приложение.<br><hr>
+Service for testing automated trading systems in financial markets. Emulates a change in market prices using csv files with history and trading operations. In future versions, a web application will be used as an interface.
